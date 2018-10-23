@@ -1163,7 +1163,7 @@ if ($configuration['user_defined']['use_buttons'] && !is_file($configuration['us
         ?>
 		<?php
 			unset($vmlist);
-			mwexec2("/usr/bin/find /dev/vmm -type c", $vmlist);
+			mwexec2("/usr/local/sbin/vm list", $vmlist);
 			unset($vmlist2);
 			$vbox_user = "vboxusers";
 			$vbox_if = get_ifname($config['interfaces']['lan']['if']);
@@ -1190,19 +1190,70 @@ if ($configuration['user_defined']['use_buttons'] && !is_file($configuration['us
 			<table width="100%" border="0" cellspacing="0" cellpadding="1">
 			<?php
 				$vmtype = "BHyVe";
+				exec("/usr/local/sbin/vm version", $vmtype);
 				$index = 0;
-				foreach ($vmlist as $vmpath) {
-					$vm = basename($vmpath);
-					unset($temp);
-					exec("/usr/sbin/bhyvectl ".escapeshellarg("--vm=$vm")." --get-lowmem | sed -e 's/.*\\///'", $temp);
-					$vram = $temp[0] / 1024 / 1024;
-					echo "<tr><td><div id='vminfo_$index'>";
-					echo htmlspecialchars("$vmtype: $vm ($vram MiB)");
-					echo "</div></td></tr>\n";
-					if (++$index < count($vmlist))
-						echo "<tr><td><hr size='1' /></td></tr>\n";
+				$header = array_shift($vmlist);
+				$headers = explode(" ", ucwords(strtolower(preg_replace("/\s+/", " ", $header))));
+				?>
+				<tr><td>
+				<script type="text/javascript">
+				function toggleVMDetails(vmIdx) {
+				    var block = $("#vm" + vmIdx),
+					ctrl = block.siblings('a');
+				    
+				    ctrl.text((ctrl.text() == 'show')
+					? 'hide'
+					: 'show'
+				    );
+				    
+				    block.toggle();
 				}
-
+				</script>
+				<table cellpadding="0" cellspacing="0">
+				    <thead>
+					<tr>
+					    <th class="lhetop" colspan="7"><?php echo $vmtype[0]; ?></th>
+					</tr>
+					<tr>
+					    <th class="lhell"><?php echo $headers[0]; ?></th>
+					    <th class="lhell"><?php echo $headers[2]; ?></th>
+					    <th class="lhell"><?php echo strtoupper($headers[3]); ?></th>
+					    <th class="lhell"><?php echo $headers[4]; ?></th>
+					    <th class="lhell"><?php echo $headers[6]; ?></th>
+					    <th class="lhell"><?php echo $headers[7]; ?></th>
+					    <th class="lhebl">Details</th>
+					</tr>
+				    </thead>
+				    <tbody>
+				<?php
+				foreach ($vmlist as $vmpath) {
+					unset($temp);
+					$vm = explode(" ", preg_replace("/\s+/", " ", $vmpath));
+					?>
+					<tr>
+					    <td class="lcell" style="vertical-align:top"><font color="blue"><b><?php echo $vm[0]; ?></b></font></td>
+					    <td class="lcell" style="vertical-align:top"><?php echo $vm[2]; ?></td>
+					    <td class="lcell" style="vertical-align:top"><?php echo $vm[3]; ?></td>
+					    <td class="lcell" style="vertical-align:top"><?php echo $vm[4]; ?></td>
+					    <td class="lcell" style="vertical-align:top"><?php echo $vm[6]." ".$vm[7]; ?></td>
+					    <td class="lcell" style="vertical-align:top"><?php echo "<img src='/ext/extended-gui/state_".((preg_match("/unning/", $vm[8]))
+						? "ok"
+						: "error"
+						).".png' valign='middle'/>&nbsp;".$vm[8]." ".$vm[9]; ?></td>
+					    <?php
+						unset($vminfo);
+						exec("/usr/local/sbin/vm info ".escapeshellarg($vm[0]), $vminfo);
+					    ?>
+					    <td class="lcebl"><a href="javascript:toggleVMDetails(<?php echo ++$index;?>)">show</a>
+						<pre id="vm<?php echo $index; ?>" style="display:none;color:#5eff00;background-color:#000"><?php echo implode("\r\n", $vminfo); ?></pre>
+					    </td>
+					</tr>
+					<?php
+				}
+				?>
+				    </tbody>
+				</table></td></tr>
+				<?php
 				$vmtype = "VBox";
 				$index = 0;
 				foreach ($vmlist2 as $vmline) {
